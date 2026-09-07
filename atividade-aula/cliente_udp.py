@@ -2,24 +2,14 @@ import socket
 import sys
 
 HOST = "127.0.0.1"
-PORT = 5001
-MATRICULA = "#"
-EMAIL = "#"
+PORT = 5000
+payload = "2025000,p@escolar.edu.br"
 
-payload = f"{MATRICULA},{EMAIL}"
+with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+    sock.sendto(payload.encode(), (HOST, PORT))
+    resposta, _ = sock.recvfrom(1024)
 
-try:
-    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as client_socket:
-        client_socket.settimeout(5.0)
-        client_socket.sendto(payload.encode("utf-8"), (HOST, PORT))
-        
-        dados, _ = client_socket.recvfrom(1024)
-        resposta = dados.decode("utf-8").strip()
+resposta = resposta.decode()
+print(resposta)
 
-    if resposta == "OK":
-        sys.exit(0)
-    else:
-        sys.exit(1)
-
-except Exception:
-    sys.exit(1)
+sys.exit(0 if resposta == "OK" else 1)

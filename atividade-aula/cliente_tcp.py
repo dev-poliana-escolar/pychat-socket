@@ -3,23 +3,24 @@ import sys
 
 HOST = "127.0.0.1"
 PORT = 5000
-MATRICULA = "#"
-EMAIL = "#"
+payload = "2025000,p@escolar.edu.br"
 
-payload = f"{MATRICULA},{EMAIL}"
+with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+    sock.connect((HOST, PORT))
+    sock.sendall(payload.encode())
 
-try:
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client_socket:
-        client_socket.settimeout(5.0)
-        client_socket.connect((HOST, PORT))
-        client_socket.sendall(payload.encode("utf-8"))
-        
-        resposta = client_socket.recv(1024).decode("utf-8").strip()
+    resposta = sock.recv(1024).decode()
+    print(resposta)
 
-    if resposta == "OK":
-        sys.exit(0)
-    else:
+    if resposta == "ERRO":
         sys.exit(1)
 
-except Exception:
-    sys.exit(1)
+    while True:
+        matricula = input("Matrícula (0 para sair): ")
+        sock.sendall(matricula.encode())
+
+        if matricula == "0":
+            break
+        print(sock.recv(1024).decode())
+
+sys.exit(0)
