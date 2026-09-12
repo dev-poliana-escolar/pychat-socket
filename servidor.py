@@ -1,64 +1,159 @@
 import socket
 import threading
 
-# comandos para conexao remota (hostname -I ou ifconfig)
-HOST = '127.0.0.1' # aqui é meu localhost. Aqui se coloca o IP do servidor, quando for remoto.
+HOST = '127.0.0.1'
 PORTA = 50000
 
 clientes = []
 
+
+def enviar_para_outros(cliente_socket, mensagem):
+    """
+    Envia uma mensagem para todos os clientes,
+    exceto para quem enviou.
+    """
+
+    for cliente in clientes[:]:
+
+        if cliente["socket"] != cliente_socket:
+
+            try:
+                # \n é usado para separar as mensagens
+                cliente["socket"].send(
+                    (mensagem + "\n").encode("utf-8")
+                )
+
+            except:
+                sair(cliente["socket"])
+
+
 def gerenciar_cliente(cliente_socket):
+
     nome_atual = ""
-    for c in clientes:
-        if c["socket"] == cliente_socket:
-            nome_atual = c["nome"]
+
+    # Descobre o nome do cliente
+    for cliente in clientes:
+        if cliente["socket"] == cliente_socket:
+            nome_atual = cliente["nome"]
+            break
 
     while True:
+
         try:
-            mensagem = cliente_socket.recv(1024).decode('utf-8')
+
+            mensagem = cliente_socket.recv(1024)
+
             if not mensagem:
                 break
-            
-            # envia a mensagem para o OUTRO cliente
-            for c in clientes:
-                if c["socket"] != cliente_socket:
-                    try:
-                        c["socket"].send(f"\n[{nome_atual}]: {mensagem}\n[Você]: ".encode('utf-8'))
-                    except:
-                        sair(c["socket"])
+
+            mensagem = mensagem.decode("utf-8").strip()
+
+            if mensagem:
+
+                mensagem_formatada = (
+                    f"[{nome_atual}]: {mensagem}"
+                )
+
+                print(mensagem_formatada)
+
+                enviar_para_outros(
+                    cliente_socket,
+                    mensagem_formatada
+                )
+
         except:
+
             break
 
     sair(cliente_socket)
 
+
 def sair(cliente_socket):
-    for c in clientes:
-        if c["socket"] == cliente_socket:
-            print(f"[DESCONECTADO] {c['nome']} saiu do chat.")
-            clientes.remove(c)
-            cliente_socket.close()
+
+    for cliente in clientes[:]:
+
+        if cliente["socket"] == cliente_socket:
+
+            print(
+                f"[DESCONECTADO] "
+                f"{cliente['nome']} saiu do chat."
+            )
+
+            clientes.remove(cliente)
+
+            try:
+                cliente_socket.close()
+            except:
+                pass
+
             break
 
+
 def iniciar_servidor():
-    servidor = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    servidor.bind((HOST, PORTA))
+
+    servidor = socket.socket(
+        socket.AF_INET,
+        socket.SOCK_STREAM
+    )
+
+    servidor.setsockopt(
+        socket.SOL_SOCKET,
+        socket.SO_REUSEADDR,
+        1
+    )
+
+    servidor.bind(
+        (HOST, PORTA)
+    )
+
     servidor.listen(2)
-    print(f"Servidor iniciado em {HOST}:{PORTA}. Aguardando até 2 pessoas...")
+
+    print(
+        f"Servidor iniciado em "
+        f"{HOST}:{PORTA}"
+    )
+
+    print(
+        "Aguardando até 2 pessoas..."
+    )
 
     while True:
-        if len(clientes) < 2:
-            cliente_socket, endereco = servidor.accept()
-            
-            # pede o nome do cliente
-            cliente_socket.send("SOLICITAR_NOME".encode('utf-8'))
-            nome = cliente_socket.recv(1024).decode('utf-8')
-            
-            clientes.append({"socket": cliente_socket, "nome": nome})
-            print(f"[CONEXÃO] {nome} ({endereco}) entrou na sala. ({len(clientes)}/2)")
 
-            thread = threading.Thread(target=gerenciar_cliente, args=(cliente_socket,))
+        if len(clientes) < 2:
+
+            cliente_socket, endereco = servidor.accept()
+
+            # Solicita o nome
+            cliente_socket.send(
+                "SOLICITAR_NOME".encode("utf-8")
+            )
+
+            nome = cliente_socket.recv(
+                1024
+            ).decode("utf-8").strip()
+
+            if not nome:
+                nome = "Anônimo"
+
+            clientes.append({
+                "socket": cliente_socket,
+                "nome": nome
+            })
+
+            print(
+                f"[CONEXÃO] {nome} "
+                f"({endereco}) entrou na sala. "
+                f"({len(clientes)}/2)"
+            )
+
+            thread = threading.Thread(
+                target=gerenciar_cliente,
+                args=(cliente_socket,)
+            )
+
             thread.daemon = True
             thread.start()
+
 
 if __name__ == "__main__":
     iniciar_servidor()
