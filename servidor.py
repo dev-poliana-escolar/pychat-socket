@@ -18,7 +18,6 @@ def enviar_para_outros(cliente_socket, mensagem):
         if cliente["socket"] != cliente_socket:
 
             try:
-                # \n é usado para separar as mensagens
                 cliente["socket"].send(
                     (mensagem + "\n").encode("utf-8")
                 )
@@ -40,7 +39,6 @@ def gerenciar_cliente(cliente_socket):
     while True:
 
         try:
-
             mensagem = cliente_socket.recv(1024)
 
             if not mensagem:
@@ -62,7 +60,6 @@ def gerenciar_cliente(cliente_socket):
                 )
 
         except:
-
             break
 
     sair(cliente_socket)
@@ -109,50 +106,78 @@ def iniciar_servidor():
     servidor.listen(2)
 
     print(
-        f"Servidor iniciado em "
-        f"{HOST}:{PORTA}"
+        f"Servidor iniciado em {HOST}:{PORTA}"
     )
 
     print(
         "Aguardando até 2 pessoas..."
     )
 
-    while True:
+    try:
 
-        if len(clientes) < 2:
+        while True:
 
-            cliente_socket, endereco = servidor.accept()
+            if len(clientes) < 2:
 
-            # Solicita o nome
-            cliente_socket.send(
-                "SOLICITAR_NOME".encode("utf-8")
-            )
+                cliente_socket, endereco = (
+                    servidor.accept()
+                )
 
-            nome = cliente_socket.recv(
-                1024
-            ).decode("utf-8").strip()
+                # Solicita o nome
+                cliente_socket.send(
+                    "SOLICITAR_NOME".encode("utf-8")
+                )
 
-            if not nome:
-                nome = "Anônimo"
+                nome = cliente_socket.recv(
+                    1024
+                ).decode("utf-8").strip()
 
-            clientes.append({
-                "socket": cliente_socket,
-                "nome": nome
-            })
+                if not nome:
+                    nome = "Anônimo"
 
-            print(
-                f"[CONEXÃO] {nome} "
-                f"({endereco}) entrou na sala. "
-                f"({len(clientes)}/2)"
-            )
+                clientes.append({
+                    "socket": cliente_socket,
+                    "nome": nome
+                })
 
-            thread = threading.Thread(
-                target=gerenciar_cliente,
-                args=(cliente_socket,)
-            )
+                print(
+                    f"[CONEXÃO] {nome} "
+                    f"({endereco}) entrou na sala. "
+                    f"({len(clientes)}/2)"
+                )
 
-            thread.daemon = True
-            thread.start()
+                thread = threading.Thread(
+                    target=gerenciar_cliente,
+                    args=(cliente_socket,)
+                )
+
+                thread.daemon = True
+                thread.start()
+
+    except KeyboardInterrupt:
+
+        print(
+            "\n[ENCERRADO] Servidor finalizado pelo usuário."
+        )
+
+    finally:
+
+        # Fecha as conexões dos clientes
+        for cliente in clientes[:]:
+
+            try:
+                cliente["socket"].close()
+            except:
+                pass
+
+        clientes.clear()
+
+        # Fecha o socket do servidor
+        servidor.close()
+
+        print(
+            "[ENCERRADO] Conexões fechadas."
+        )
 
 
 if __name__ == "__main__":
